@@ -4,13 +4,11 @@ import org.jgroups.Address;
 import org.jgroups.util.Streamable;
 import org.jgroups.util.Util;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import java.io.DataInput;
+import java.io.DataOutput;
 
 /** ID which is unique across a cluster
  * @author Bela Ban
- * @version $Id: ClusterID.java,v 1.2 2008/09/05 06:23:44 belaban Exp $
  */
 public class ClusterID implements Streamable {
     private Address creator;
@@ -52,12 +50,12 @@ public class ClusterID implements Streamable {
     }
 
     
-    public void writeTo(DataOutputStream out) throws IOException {
+    public void writeTo(DataOutput out) throws Exception {
         Util.writeAddress(creator, out);
         out.writeInt(id);
     }
 
-    public void readFrom(DataInputStream in) throws IOException, IllegalAccessException, InstantiationException {
+    public void readFrom(DataInput in) throws Exception {
         creator=Util.readAddress(in);
         id=in.readInt();
     }

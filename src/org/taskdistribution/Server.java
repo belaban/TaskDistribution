@@ -5,21 +5,19 @@ import org.jgroups.util.Promise;
 import org.jgroups.util.Streamable;
 import org.jgroups.util.Util;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
 import java.util.Date;
-import java.util.Vector;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * @author Bela Ban
- * @version $Id: Server.java,v 1.11 2008/09/09 09:54:28 belaban Exp $
  */
 public class Server extends ReceiverAdapter implements Master, Slave {
     private String props="udp.xml";
@@ -40,8 +38,8 @@ public class Server extends ReceiverAdapter implements Master, Slave {
         this.props=props;
     }
 
-    public void start() throws Exception {
-        ch=new JChannel(props);
+    public void start(String name) throws Exception {
+        ch=new JChannel(props).name(name);
         ch.setReceiver(this);
         ch.connect("dzone-demo");
     }
@@ -53,18 +51,18 @@ public class Server extends ReceiverAdapter implements Master, Slave {
 
     public String info() {
         StringBuilder sb=new StringBuilder();
-        sb.append("local_addr=" + ch.getLocalAddress() + "\nview=" + view).append("\n");
+        sb.append("local_addr=" + ch.getAddress() + "\nview=" + view).append("\n");
         sb.append("rank=" + rank + "\n");
         sb.append("(" + tasks.size() + " entries in tasks cache)");
         return sb.toString();
     }
 
     public Object submit(Task task, long timeout) throws Exception {
-        ClusterID id=ClusterID.create(ch.getLocalAddress());
+        ClusterID id=ClusterID.create(ch.getAddress());
         try {
             Request req=new Request(Request.Type.EXECUTE, task, id, null);
             byte[] buf=Util.streamableToByteBuffer(req);
-            Entry entry=new Entry(task, ch.getLocalAddress());
+            Entry entry=new Entry(task, ch.getAddress());
             tasks.put(id, entry);
             log("==> submitting " + id);
             ch.send(new Message(null, null, buf));
@@ -140,12 +138,13 @@ public class Server extends ReceiverAdapter implements Master, Slave {
 
 
     public void viewAccepted(View view) {
-        List<Address> left_members=Util.leftMembers(this.view, view);
+        List<Address> left_members=this.view != null && view != null?
+          Util.leftMembers(this.view.getMembers(), view.getMembers()) : null;
         this.view=view;
-        Address local_addr=ch.getLocalAddress();
+        Address local_addr=ch.getAddress();
         System.out.println("view: " + view);
         cluster_size=view.size();
-        Vector<Address> mbrs=view.getMembers();
+        List<Address> mbrs=view.getMembers();
         int old_rank=rank;
         for(int i=0; i < mbrs.size(); i++) {
             Address tmp=mbrs.get(i);
@@ -184,17 +183,22 @@ public class Server extends ReceiverAdapter implements Master, Slave {
 
     public static void main(String[] args) throws Exception {
         String props="udp.xml";
+        String name=null;
 
         for(int i=0; i < args.length; i++) {
             if(args[i].equals("-props")) {
                 props=args[++i];
                 continue;
             }
+            if(args[i].equals("-name")) {
+                name=args[++i];
+                continue;
+            }
             help();
             return;
         }
         Server server=new Server(props);
-        server.start();
+        server.start(name);
 
         loop(server);
     }
@@ -203,7 +207,6 @@ public class Server extends ReceiverAdapter implements Master, Slave {
         boolean looping=true;
         while(looping) {
             int key=Util.keyPress("[1] Submit [2] Submit long running task [3] Info [q] Quit");
-            Util.discardUntilNewLine(System.in);
             switch(key) {
                 case '1':
                     Task task=new Task() {
@@ -258,7 +261,7 @@ public class Server extends ReceiverAdapter implements Master, Slave {
 
 
     private static void help() {
-        System.out.println("Server [-props <JGroups properties>]");
+        System.out.println("Server [-props <XML config file>] [-name <name>]");
     }
 
     private static void log(String msg) {
@@ -341,7 +344,7 @@ public class Server extends ReceiverAdapter implements Master, Slave {
         }
 
        
-        public void writeTo(DataOutputStream out) throws IOException {
+        public void writeTo(DataOutput out) throws Exception {
             out.writeInt(type.ordinal());
             try {
                 Util.objectToStream(task, out);
@@ -362,7 +365,7 @@ public class Server extends ReceiverAdapter implements Master, Slave {
             }
         }
 
-        public void readFrom(DataInputStream in) throws IOException, IllegalAccessException, InstantiationException {
+        public void readFrom(DataInput in) throws Exception {
             int tmp=in.readInt();
             switch(tmp) {
                 case 0:
