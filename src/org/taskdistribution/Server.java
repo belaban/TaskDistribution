@@ -20,7 +20,7 @@ import java.util.concurrent.Executors;
  * @author Bela Ban
  */
 public class Server extends ReceiverAdapter implements Master, Slave {
-    private String props="udp.xml";
+    private String  props="udp.xml";
     private Channel ch;
 
     /** Maps task IDs to Tasks */
@@ -30,8 +30,8 @@ public class Server extends ReceiverAdapter implements Master, Slave {
     private final ExecutorService thread_pool=Executors.newCachedThreadPool();
 
     private View view;
-    private int rank=-1;
-    private int cluster_size=-1;
+    private int  rank=-1;
+    private int  cluster_size=-1;
 
 
     public Server(String props) {
@@ -65,7 +65,7 @@ public class Server extends ReceiverAdapter implements Master, Slave {
             Entry entry=new Entry(task, ch.getAddress());
             tasks.put(id, entry);
             log("==> submitting " + id);
-            ch.send(new Message(null, null, buf));
+            ch.send(new Message(null, buf));
             // wait on entry for result
             return entry.promise.getResultWithTimeout(timeout);
         }
@@ -113,7 +113,7 @@ public class Server extends ReceiverAdapter implements Master, Slave {
         Request remove_req=new Request(Request.Type.REMOVE, null, id, null);
         try {
             byte[] buf=Util.streamableToByteBuffer(remove_req);
-            ch.send(new Message(null, null, buf));
+            ch.send(new Message(null, buf));
         }
         catch(Exception e) {
             err("failed multicasting REMOVE request", e);
@@ -278,8 +278,8 @@ public class Server extends ReceiverAdapter implements Master, Slave {
     }
 
     private static class Entry {
-        private final Task task;
-        private final Address submitter;
+        private final Task            task;
+        private final Address         submitter;
         private final Promise<Object> promise=new Promise<Object>();
 
         public Entry(Task task, Address submitter) {
@@ -314,7 +314,7 @@ public class Server extends ReceiverAdapter implements Master, Slave {
             Request response=new Request(Request.Type.RESULT, null, id, result);
             try {
                 byte[] buf=Util.streamableToByteBuffer(response);
-                Message rsp=new Message(sender, null, buf);
+                Message rsp=new Message(sender, buf);
                 ch.send(rsp);
             }
             catch(Exception e) {
