@@ -18,6 +18,7 @@ import java.util.concurrent.Executors;
 
 /**
  * @author Bela Ban
+ * todo: make submit() non-blocking, e.g. with a CompletableFuture (JDK 8)
  */
 public class Server extends ReceiverAdapter implements Master, Slave {
     private String  props="udp.xml";
