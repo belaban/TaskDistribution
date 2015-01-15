@@ -25,7 +25,7 @@ public class Server extends ReceiverAdapter implements Master, Slave {
     private Channel ch;
 
     /** Maps task IDs to Tasks */
-    private final ConcurrentMap<ClusterID,Entry> tasks=new ConcurrentHashMap<ClusterID,Entry>();
+    private final ConcurrentMap<ClusterID,Entry> tasks=new ConcurrentHashMap<>();
 
     /** Used to handle received tasks */
     private final ExecutorService thread_pool=Executors.newCachedThreadPool();
@@ -281,7 +281,7 @@ public class Server extends ReceiverAdapter implements Master, Slave {
     private static class Entry {
         private final Task            task;
         private final Address         submitter;
-        private final Promise<Object> promise=new Promise<Object>();
+        private final Promise<Object> promise=new Promise<>();
 
         public Entry(Task task, Address submitter) {
             this.task=task;
