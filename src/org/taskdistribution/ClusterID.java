@@ -6,6 +6,7 @@ import org.jgroups.util.Util;
 
 import java.io.DataInput;
 import java.io.DataOutput;
+import java.io.IOException;
 
 /** ID which is unique across a cluster
  * @author Bela Ban
@@ -50,12 +51,12 @@ public class ClusterID implements Streamable {
     }
 
     
-    public void writeTo(DataOutput out) throws Exception {
+    public void writeTo(DataOutput out) throws IOException {
         Util.writeAddress(creator, out);
         out.writeInt(id);
     }
 
-    public void readFrom(DataInput in) throws Exception {
+    public void readFrom(DataInput in) throws IOException, ClassNotFoundException {
         creator=Util.readAddress(in);
         id=in.readInt();
     }

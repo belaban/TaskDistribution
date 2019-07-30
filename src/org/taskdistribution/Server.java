@@ -21,8 +21,8 @@ import java.util.concurrent.Executors;
  * todo: make submit() non-blocking, e.g. with a CompletableFuture (JDK 8)
  */
 public class Server extends ReceiverAdapter implements Master, Slave {
-    private String  props="udp.xml";
-    private Channel ch;
+    private String   props="udp.xml";
+    private JChannel ch;
 
     /** Maps task IDs to Tasks */
     private final ConcurrentMap<ClusterID,Entry> tasks=new ConcurrentHashMap<>();
@@ -83,7 +83,7 @@ public class Server extends ReceiverAdapter implements Master, Slave {
     /** All we receive is Requests */
     public void receive(Message msg) {
         try {
-            Request req=(Request)Util.streamableFromByteBuffer(Request.class, msg.getRawBuffer(), msg.getOffset(), msg.getLength());
+            Request req=Util.streamableFromByteBuffer(Request.class, msg.getRawBuffer(), msg.getOffset(), msg.getLength());
             switch(req.type) {
                 case EXECUTE:
                     handleExecute(req.id, msg.getSrc(), req.task);
@@ -236,14 +236,11 @@ public class Server extends ReceiverAdapter implements Master, Slave {
                     System.out.println(server.info());
                     break;
                 case 'q':
+                case -1:
                     looping=false;
                     break;
                 case 'r':
-                    break;
                 case '\n':
-                    break;
-                case -1:
-                    looping=false;
                     break;
             }
         }
@@ -326,7 +323,7 @@ public class Server extends ReceiverAdapter implements Master, Slave {
     
 
     public static class Request implements Streamable {
-        static enum Type {EXECUTE, RESULT, REMOVE};
+        enum Type {EXECUTE, RESULT, REMOVE};
 
         private Type type;
         private Task task;
@@ -345,28 +342,14 @@ public class Server extends ReceiverAdapter implements Master, Slave {
         }
 
        
-        public void writeTo(DataOutput out) throws Exception {
+        public void writeTo(DataOutput out) throws IOException {
             out.writeInt(type.ordinal());
-            try {
-                Util.objectToStream(task, out);
-            }
-            catch(Exception e) {
-                IOException ex=new IOException("failed marshalling of task " + task);
-                ex.initCause(e);
-                throw ex;
-            }
+            Util.objectToStream(task, out);
             Util.writeStreamable(id, out);
-            try {
-                Util.objectToStream(result, out);
-            }
-            catch(Exception e) {
-                IOException ex=new IOException("failed to marshall result object");
-                ex.initCause(e);
-                throw ex;
-            }
+            Util.objectToStream(result, out);
         }
 
-        public void readFrom(DataInput in) throws Exception {
+        public void readFrom(DataInput in) throws IOException, ClassNotFoundException {
             int tmp=in.readInt();
             switch(tmp) {
                 case 0:
@@ -379,25 +362,11 @@ public class Server extends ReceiverAdapter implements Master, Slave {
                     type=Type.REMOVE;
                     break;
                 default:
-                    throw new InstantiationException("ordinal " + tmp + " cannot be mapped to enum");
+                    throw new IllegalArgumentException("ordinal " + tmp + " cannot be mapped to enum");
             }
-            try {
-                task=(Task)Util.objectFromStream(in);
-            }
-            catch(Exception e) {
-                InstantiationException ex=new InstantiationException("failed reading task from stream");
-                ex.initCause(e);
-                throw ex;
-            }
-            id=(ClusterID)Util.readStreamable(ClusterID.class, in);
-            try {
-                result=Util.objectFromStream(in);
-            }
-            catch(Exception e) {
-                IOException ex=new IOException("failed to unmarshal result object");
-                ex.initCause(e);
-                throw ex;
-            }
+            task=Util.objectFromStream(in);
+            id=Util.readStreamable(ClusterID::new, in);
+            result=Util.objectFromStream(in);
         }
 
     }
