@@ -171,7 +171,7 @@ public class Server extends ReceiverAdapter implements Master, Slave {
             ClusterID id=entry.getKey();
             int index=id.getId() % cluster_size;
             if(index != rank)
-                return;
+                continue;
             Entry val=entry.getValue();
             if(mbr.equals(val.submitter)) {
                 err("will not take over tasks submitted by " + mbr + " because it left the cluster");
